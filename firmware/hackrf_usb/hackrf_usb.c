@@ -286,9 +286,10 @@ static void m0_rom_to_ram(void)
 }
 
 #ifdef IS_PRALINE
-extern uint32_t _binary_fpga_bin_start;
-
 #if defined(DFU_MODE) || defined(RAM_MODE)
+extern uint32_t _binary_fpga_dfu_bin_start;
+#define FPGA_START_ADDR _binary_fpga_dfu_bin_start
+
 void fpga_loader_setup(void)
 {}
 
@@ -297,6 +298,9 @@ void fpga_loader_read(uint32_t addr, uint32_t size, uint8_t* buf)
 	memcpy(buf, (const void *)addr, size);
 }
 #else
+extern uint32_t _binary_fpga_bin_start;
+#define FPGA_START_ADDR _binary_fpga_bin_start
+
 void fpga_loader_setup(void)
 {
 	spi_bus_start(spi_flash.bus, &ssp_config_w25q80bv);
@@ -310,7 +314,7 @@ void fpga_loader_read(uint32_t addr, uint32_t size, uint8_t* buf)
 #endif
 
 struct fpga_loader_t fpga_loader = {
-	.start_addr = (uint32_t) &_binary_fpga_bin_start,
+	.start_addr = (uint32_t) &FPGA_START_ADDR,
 	.setup = fpga_loader_setup,
 	.read = fpga_loader_read,
 	.in_buffer = lz4_in_buf,

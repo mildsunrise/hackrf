@@ -18,6 +18,7 @@ from top.ext_precision_tx   import Top as ext_precision_tx
 
 BLOCK_SIZE = 4096  # 4 KiB blocks
 OUTPUT_FILE = "praline_fpga.bin"
+OUTPUT_FILE_DFU = "praline_fpga_dfu.bin"
 
 def compress_blockwise(f_in, f_out):
     # For every block...
@@ -34,6 +35,24 @@ def compress_blockwise(f_in, f_out):
     # Write end marker (block of size 0)
     f_out.write(struct.pack("<H", 0))
 
+def pack_bitstreams(fpga_images, output_file):
+    with open(f"build/{output_file}", "wb") as f_out:
+        f_out.write(struct.pack("<I", len(fpga_images)))  # number of bitstreams
+        f_out.seek(4 * len(fpga_images), os.SEEK_CUR)     # reserve 4-byte slots for offsets
+        offsets = []
+
+        # Write compressed bitstreams in our custom raw LZ4 block format.
+        for name in fpga_images:
+            img_path = f"build/{name}.bin"
+            offsets.append(f_out.tell())
+            with open(img_path, 'rb') as f_in:
+                compress_blockwise(f_in, f_out)
+
+        # Write offsets table, right after the number of bitstreams.
+        f_out.seek(4, os.SEEK_SET)
+        for offset in offsets:
+            f_out.write(struct.pack("<I", offset))
+
 
 if __name__ == "__main__":
 
@@ -46,23 +65,10 @@ if __name__ == "__main__":
 
     # Build bitstreams first.
     for name, image in fpga_images.items():
-        PralinePlatform().build(image, name=name)
+        PralinePlatform().build(image, name=name, nextpnr_opts='--seed 833775589' if name == '3_extprec_tx' else '')
 
     # Pack all the bitstreams.
-    with open(f"build/{OUTPUT_FILE}", "wb") as f_out:
-        f_out.write(struct.pack("<I", len(fpga_images)))  # number of bitstreams
-        f_out.seek(4 * len(fpga_images), os.SEEK_CUR)     # reserve 4-byte slots for offsets
-        offsets = []
-
-        # Write compressed bitstreams in our custom raw LZ4 block format.
-        for name, image in fpga_images.items():
-            img_path = f"build/{name}.bin"
-            offsets.append(f_out.tell())
-            with open(img_path, 'rb') as f_in:
-                compress_blockwise(f_in, f_out)
-
-        # Write offsets table, right after the number of bitstreams.
-        f_out.seek(4, os.SEEK_SET)
-        for offset in offsets:
-            f_out.write(struct.pack("<I", offset))
+    pack_bitstreams(fpga_images, OUTPUT_FILE)
+    # For DFU we cannot fit all bitstreams into RAM, but we can fit the default one
+    pack_bitstreams(list(fpga_images)[:1], OUTPUT_FILE_DFU)
 

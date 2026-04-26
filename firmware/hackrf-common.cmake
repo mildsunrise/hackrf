@@ -42,6 +42,8 @@ SET(PATH_CPLD_BITSTREAM_TOOL ${PATH_HACKRF_FIRMWARE}/tools/cpld_bitstream.py)
 set(PATH_HACKRF_CPLD_DATA_C ${CMAKE_CURRENT_BINARY_DIR}/hackrf_cpld_data.c)
 SET(PATH_PRALINE_FPGA_BIN ${PATH_HACKRF_FIRMWARE}/fpga/build/praline_fpga.bin)
 SET(PATH_PRALINE_FPGA_OBJ ${CMAKE_CURRENT_BINARY_DIR}/fpga.o)
+SET(PATH_PRALINE_FPGA_DFU_BIN ${PATH_HACKRF_FIRMWARE}/fpga/build/praline_fpga_dfu.bin)
+SET(PATH_PRALINE_FPGA_DFU_OBJ ${CMAKE_CURRENT_BINARY_DIR}/fpga_dfu.o)
 
 include(${PATH_HACKRF_FIRMWARE}/dfu-util.cmake)
 
@@ -117,7 +119,7 @@ set(BUILD_SHARED_LIBS OFF)
 include_directories("${LIBOPENCM3}/include/")
 include_directories("${PATH_HACKRF_FIRMWARE_COMMON}")
 
-macro(DeclareTarget project_name variant_suffix cflags ldflags)
+macro(DeclareTarget project_name variant_suffix cflags ldflags obj_m4)
 	# Generate M0 bin from elf
 	add_custom_command(
 		OUTPUT ${project_name}${variant_suffix}_m0.bin
@@ -145,7 +147,7 @@ macro(DeclareTarget project_name variant_suffix cflags ldflags)
 
 	add_library(${project_name}${variant_suffix}_objects OBJECT ${SRC_M4} ${project_name}${variant_suffix}_m0_bin.s)
 	set_target_properties(${project_name}${variant_suffix}_objects PROPERTIES COMPILE_FLAGS "${cflags}")
-	add_executable(${project_name}${variant_suffix}.elf $<TARGET_OBJECTS:${project_name}${variant_suffix}_objects> ${OBJ_M4})
+	add_executable(${project_name}${variant_suffix}.elf $<TARGET_OBJECTS:${project_name}${variant_suffix}_objects> ${obj_m4})
 	add_dependencies(${project_name}${variant_suffix}.elf libopencm3_${project_name})
 
 	target_link_libraries(
@@ -269,9 +271,9 @@ macro(DeclareTargets)
 	set_target_properties(${PROJECT_NAME}_m0.elf PROPERTIES COMPILE_FLAGS "${CFLAGS_M0}")
 	set_target_properties(${PROJECT_NAME}_m0.elf PROPERTIES LINK_FLAGS "${LDFLAGS_M0}")
 
-	DeclareTarget("${PROJECT_NAME}" "" "${CFLAGS_M4}" "${LDFLAGS_M4}")
-	DeclareTarget("${PROJECT_NAME}" "_ram" "${CFLAGS_M4_RAM} -DRAM_MODE" "${LDFLAGS_M4_RAM}")
-	DeclareTarget("${PROJECT_NAME}" "_dfu" "${CFLAGS_M4_RAM} -DDFU_MODE" "${LDFLAGS_M4_RAM}")
+	DeclareTarget("${PROJECT_NAME}" "" "${CFLAGS_M4}" "${LDFLAGS_M4}" "${OBJ_M4}")
+	DeclareTarget("${PROJECT_NAME}" "_ram" "${CFLAGS_M4_RAM} -DRAM_MODE" "${LDFLAGS_M4_RAM}" "${OBJ_M4_DFU}")
+	DeclareTarget("${PROJECT_NAME}" "_dfu" "${CFLAGS_M4_RAM} -DDFU_MODE" "${LDFLAGS_M4_RAM}" "${OBJ_M4_DFU}")
 
 	add_custom_target(
 		${PROJECT_NAME}.dfu ${DFU_ALL}

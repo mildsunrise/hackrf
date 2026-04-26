@@ -44,6 +44,19 @@ add_custom_command(
 	DEPENDS ${PATH_PRALINE_FPGA_BIN}
 )
 
+add_custom_command(
+	OUTPUT ${PATH_PRALINE_FPGA_DFU_OBJ}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+	COMMAND ${CMAKE_COMMAND} -E copy ${PATH_PRALINE_FPGA_DFU_BIN} "fpga_dfu.bin"
+	COMMAND ${CMAKE_OBJCOPY}
+		-I binary
+		-O elf32-littlearm
+		-B arm
+		--rename-section .data=.rodata
+		"fpga_dfu.bin" ${PATH_PRALINE_FPGA_DFU_OBJ}
+	DEPENDS ${PATH_PRALINE_FPGA_DFU_BIN}
+)
+
 set(SRC_M4
 	hackrf_usb.c
 	"${PATH_HACKRF_FIRMWARE_COMMON}/tuning.c"
@@ -105,6 +118,9 @@ if(BOARD STREQUAL "PRALINE")
 	)
 	SET(OBJ_M4
 		${PATH_PRALINE_FPGA_OBJ}
+	)
+	SET(OBJ_M4_DFU
+		${PATH_PRALINE_FPGA_DFU_OBJ}
 	)
 else()
 	SET(SRC_M4
